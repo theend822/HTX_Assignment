@@ -32,7 +32,8 @@ def read_data(spark: SparkSession, config: Dict[str, Any]):
     return df.rdd
 
 
-def write_data(spark: SparkSession, config: Dict[str, Any], rdd, schema: StructType):
+def write_data(spark: SparkSession, config: Dict[str, Any], rdd,
+               schema: StructType):
     """
     General function to write data based on configuration.
 

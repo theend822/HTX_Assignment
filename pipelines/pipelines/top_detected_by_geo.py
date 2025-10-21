@@ -9,10 +9,10 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
-from pipelines.config.config_top_detected_by_geo import CONFIG
-from lib.operators.TopDetectedOperator import TopDetectedOperator
-from lib.io.data_io import read_data, write_data, get_schema
-from lib.spark_session import create_spark_session
+from pipelines.config.config_top_detected_by_geo import CONFIG  # noqa: E402
+from lib.operators.TopDetectedOperator import TopDetectedOperator  # noqa: E402
+from lib.io.data_io import read_data, write_data, get_schema  # noqa: E402
+from lib.spark_session import create_spark_session  # noqa: E402
 
 
 def run_pipeline():
@@ -37,11 +37,12 @@ def run_pipeline():
     ).collectAsMap()
 
     # result_rdd format: (geographical_location_oid, item_rank, item_name)
-    # Transform to: (geographical_location_oid, geographical_location, item_rank, item_name)
+    # Transform to: (geographical_location_oid, geographical_location,
+    #                item_rank, item_name)
     result_with_location = result_rdd.map(
         lambda row: (
             row[0],  # geographical_location_oid
-            location_lookup.get(row[0], 'Unknown'),  # geographical_location_name
+            location_lookup.get(row[0], 'Unknown'),  # geo_location_name
             row[1],  # item_rank
             row[2]   # item_name
         )
@@ -51,8 +52,9 @@ def run_pipeline():
     output_schema = get_schema(CONFIG['schemas'])['output']
     write_data(spark, CONFIG['output'], result_with_location, output_schema)
 
-    spark.stop()
+    return spark
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    spark = run_pipeline()
+    spark.stop()

@@ -1,17 +1,18 @@
 """
 Integration tests for the pipeline architecture.
 """
-from pipelines.config.config_top_detected_by_geo import CONFIG
-from lib.spark_session import create_spark_session
-from lib.io.data_io import get_schema
 import unittest
 import tempfile
 import shutil
 import sys
 import os
 
-# Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path BEFORE importing project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from pipelines.config.config_top_detected_by_geo import CONFIG  # noqa: E402
+from lib.spark_session import create_spark_session  # noqa: E402
+from lib.io.data_io import get_schema  # noqa: E402
 
 
 class TestPipelineIntegration(unittest.TestCase):
@@ -84,8 +85,10 @@ class TestPipelineIntegration(unittest.TestCase):
 
         # Override config to use test data and output paths
         test_config = copy.deepcopy(CONFIG)
-        test_config['inputs']['detection_data']['file_path'] = self.detection_path
-        test_config['inputs']['location_data']['file_path'] = self.location_path
+        test_config['inputs']['detection_data']['file_path'] = \
+            self.detection_path
+        test_config['inputs']['location_data']['file_path'] = \
+            self.location_path
         test_config['output']['output_path'] = output_path
 
         # Temporarily replace CONFIG

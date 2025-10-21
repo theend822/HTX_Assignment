@@ -1,6 +1,7 @@
 """
 Top Detected Items Pipeline with Automatic Data Skew Handling.
-This pipeline automatically detects and handles data skew without hardcoding skewed keys.
+This pipeline automatically detects and handles data skew without hardcoding
+skewed keys.
 """
 import sys
 import os
@@ -10,10 +11,10 @@ import random
 sys.path.append(os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
-from pipelines.config.config_top_detected_by_geo import CONFIG as BASE_CONFIG
-from lib.operators.TopDetectedOperator import TopDetectedOperator
-from lib.io.data_io import read_data, write_data, get_schema
-from lib.spark_session import create_spark_session
+from pipelines.config.config_top_detected_by_geo import CONFIG as BASE_CONFIG  # noqa: E402, E501
+from lib.operators.TopDetectedOperator import TopDetectedOperator  # noqa: E402
+from lib.io.data_io import read_data, write_data, get_schema  # noqa: E402
+from lib.spark_session import create_spark_session  # noqa: E402
 
 
 # Skew-specific config
@@ -34,7 +35,8 @@ CONFIG.update({
 })
 
 
-def detect_skewed_keys(data_rdd, groupby_columns, sample_fraction=0.1, skew_threshold=3.0):
+def detect_skewed_keys(data_rdd, groupby_columns, sample_fraction=0.1,
+                       skew_threshold=3.0):
     """
     Automatically detect skewed keys by profiling data distribution.
 
@@ -87,7 +89,6 @@ def calculate_top_items_with_skew_handling(data_rdd, config):
     """
     groupby_columns = config['processing']['groupby_columns']
     rank_column = config['processing']['rank_column']
-    top_x = config['processing']['top_x']
     salt_factor = config['processing']['salt_factor']
 
     # Step 1: Detect skewed keys
@@ -115,11 +116,12 @@ def calculate_top_items_with_skew_handling(data_rdd, config):
 
     # Step 3: Process non-skewed data normally
     if non_skewed_data.isEmpty():
-        non_skewed_counts = non_skewed_data.sparkContext.parallelize([])
+        non_skewed_counts = \
+            non_skewed_data.sparkContext.parallelize([])
     else:
         operator_non_skewed = TopDetectedOperator(config)
         non_skewed_counts = operator_non_skewed._calculate_top_items(
-            non_skewed_data.map(lambda row: (row, True))  # All flagged as unique
+            non_skewed_data.map(lambda row: (row, True))  # All unique
         )
 
     # Step 4: Process skewed data with salting
@@ -151,7 +153,8 @@ def calculate_top_items_with_skew_handling(data_rdd, config):
         .groupByKey()
 
     operator_skewed = TopDetectedOperator(config)
-    skewed_results = skewed_grouped.flatMap(operator_skewed._rank_and_select_top)
+    skewed_results = skewed_grouped.flatMap(
+        operator_skewed._rank_and_select_top)
 
     # Step 5: Combine skewed and non-skewed results
     return non_skewed_counts.union(skewed_results)
@@ -188,11 +191,12 @@ def run_pipeline():
     ).collectAsMap()
 
     # result_rdd format: (geographical_location_oid, item_rank, item_name)
-    # Transform to: (geographical_location_oid, geographical_location, item_rank, item_name)
+    # Transform to: (geographical_location_oid, geographical_location,
+    #                item_rank, item_name)
     result_with_location = result_rdd.map(
         lambda row: (
             row[0],  # geographical_location_oid
-            location_lookup.get(row[0], 'Unknown'),  # geographical_location_name
+            location_lookup.get(row[0], 'Unknown'),  # geo_location_name
             row[1],  # item_rank
             row[2]   # item_name
         )
@@ -202,8 +206,9 @@ def run_pipeline():
     output_schema = get_schema(CONFIG['schemas'])['output']
     write_data(spark, CONFIG['output'], result_with_location, output_schema)
 
-    spark.stop()
+    return spark
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    spark = run_pipeline()
+    spark.stop()

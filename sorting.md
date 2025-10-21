@@ -1,9 +1,8 @@
-==============================================
-SPARK SORTING STRATEGIES
-==============================================
+
+# SPARK SORTING STRATEGIES
 
 1. SORT MERGE JOIN
------------------
+
 Overview:
 - Default join strategy for large-large table joins
 - Both datasets are sorted by join keys, then merged
@@ -18,7 +17,7 @@ Characteristics:
 
 
 2. BROADCAST HASH JOIN
----------------------
+
 Overview:
 - Small dataset is broadcast to all executors
 - Large dataset is processed locally with broadcasted hash table
@@ -33,7 +32,7 @@ Characteristics:
 
 
 3. SHUFFLE HASH JOIN
--------------------
+
 Overview:
 - Data is shuffled by join keys
 - Hash table built on smaller side per partition
@@ -47,7 +46,7 @@ Characteristics:
 
 
 4. CARTESIAN JOIN
-----------------
+
 Overview:
 - Cross product of all rows
 - No join condition optimization
@@ -59,9 +58,8 @@ Characteristics:
 - Not applicable to our use case
 
 
-==============================================
-RECOMMENDED STRATEGY FOR OUR USE CASE: BROADCAST HASH JOIN
-==============================================
+
+# RECOMMENDED STRATEGY FOR OUR USE CASE: BROADCAST HASH JOIN
 
 Rationale:
 1. Dataset B (locations) is small (10K rows ~1-5MB)
@@ -70,8 +68,7 @@ Rationale:
 4. Performance critical for real-time processing requirements
 
 
-OUR RDD IMPLEMENTATION APPROACH
-================================
+## OUR RDD IMPLEMENTATION APPROACH
 
 In our actual implementation, we use RDD-based map-side join instead of DataFrame operations:
 

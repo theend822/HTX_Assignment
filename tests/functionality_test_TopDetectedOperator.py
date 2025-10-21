@@ -1,18 +1,19 @@
 """
 Unit tests for TopDetectedOperator.
 """
-from pipelines.config.config_top_detected_by_geo import CONFIG
-from lib.operators.TopDetectedOperator import TopDetectedOperator
-from lib.spark_session import create_spark_session
-from collections import namedtuple
 import unittest
 import tempfile
 import shutil
 import sys
 import os
+from collections import namedtuple
 
-# Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root to path BEFORE importing project modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from pipelines.config.config_top_detected_by_geo import CONFIG  # noqa: E402
+from lib.operators.TopDetectedOperator import TopDetectedOperator  # noqa: E402
+from lib.spark_session import create_spark_session  # noqa: E402
 
 
 class TestTopDetectedOperator(unittest.TestCase):
@@ -89,7 +90,6 @@ class TestTopDetectedOperator(unittest.TestCase):
         self.assertEqual(location_2_results[0], (2, 1, "person"))  # rank 1
         self.assertEqual(location_2_results[1], (2, 2, "dog"))    # rank 2
 
-
     def test_deduplication(self):
         """Test that duplicate detection_oid are properly flagged."""
         config = CONFIG.copy()
@@ -110,7 +110,8 @@ class TestTopDetectedOperator(unittest.TestCase):
         # Should have 3 rows (all preserved), with flags
         self.assertEqual(len(result), 3)
 
-        # Check flags: first occurrence of 1001 is True, second is False, 1002 is True
+        # Check flags: first occurrence of 1001 is True, second is False,
+        # 1002 is True
         unique_count = sum(1 for row, is_unique in result if is_unique)
         duplicate_count = sum(1 for row, is_unique in result if not is_unique)
 
