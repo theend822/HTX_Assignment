@@ -46,7 +46,7 @@ class TestTopDetectedOperator(unittest.TestCase):
         shutil.rmtree(cls.temp_dir)
 
     def test_standard_operator(self):
-        """Test standard processing without skew handling."""
+        """Test standard operator calculation."""
         config = CONFIG.copy()
         config['processing']['top_x'] = 2
 
@@ -65,16 +65,10 @@ class TestTopDetectedOperator(unittest.TestCase):
             self.DetectionRow(2, 203, 1007, "dog", 1234567896)
         ]
 
-        test_locations = [
-            self.LocationRow(1, "Downtown"),
-            self.LocationRow(2, "Suburb")
-        ]
-
         detection_rdd = self.spark.sparkContext.parallelize(test_detections)
-        location_rdd = self.spark.sparkContext.parallelize(test_locations)
 
         # Process data
-        result_rdd = operator.process(detection_rdd, location_rdd)
+        result_rdd = operator.calculate(detection_rdd)
         results = result_rdd.collect()
 
         # Sort results for consistent testing
@@ -97,7 +91,7 @@ class TestTopDetectedOperator(unittest.TestCase):
 
 
     def test_deduplication(self):
-        """Test that duplicate detection_oid are properly handled."""
+        """Test that duplicate detection_oid are properly flagged."""
         config = CONFIG.copy()
         operator = TopDetectedOperator(config)
 
@@ -110,30 +104,18 @@ class TestTopDetectedOperator(unittest.TestCase):
         ]
 
         rdd = self.spark.sparkContext.parallelize(test_data)
-        deduplicated_rdd = operator._deduplicate_detections(rdd)
-        result = deduplicated_rdd.collect()
+        flagged_rdd = operator._detect_and_flag(rdd)
+        result = flagged_rdd.collect()
 
-        # Should have 2 unique detection_oid values
-        self.assertEqual(len(result), 2)
-        detection_oids = [row.detection_oid for row in result]
-        self.assertEqual(set(detection_oids), {1001, 1002})
+        # Should have 3 rows (all preserved), with flags
+        self.assertEqual(len(result), 3)
 
-    def test_location_lookup(self):
-        """Test location lookup creation."""
-        config = CONFIG.copy()
-        operator = TopDetectedOperator(config)
+        # Check flags: first occurrence of 1001 is True, second is False, 1002 is True
+        unique_count = sum(1 for row, is_unique in result if is_unique)
+        duplicate_count = sum(1 for row, is_unique in result if not is_unique)
 
-        test_data = [
-            self.LocationRow(1, "Downtown"),
-            self.LocationRow(2, "Suburb"),
-            self.LocationRow(3, "Industrial")
-        ]
-
-        rdd = self.spark.sparkContext.parallelize(test_data)
-        lookup = operator._create_location_lookup(rdd)
-
-        expected = {1: "Downtown", 2: "Suburb", 3: "Industrial"}
-        self.assertEqual(lookup, expected)
+        self.assertEqual(unique_count, 2)  # 1001 (first), 1002
+        self.assertEqual(duplicate_count, 1)  # 1001 (second)
 
     def test_empty_data_handling(self):
         """Test handling of empty datasets."""
@@ -141,11 +123,8 @@ class TestTopDetectedOperator(unittest.TestCase):
         operator = TopDetectedOperator(config)
 
         empty_rdd = self.spark.sparkContext.parallelize([])
-        deduplicated = operator._deduplicate_detections(empty_rdd)
-        self.assertEqual(deduplicated.count(), 0)
-
-        empty_lookup = operator._create_location_lookup(empty_rdd)
-        self.assertEqual(empty_lookup, {})
+        flagged_rdd = operator._detect_and_flag(empty_rdd)
+        self.assertEqual(flagged_rdd.count(), 0)
 
 
 if __name__ == "__main__":

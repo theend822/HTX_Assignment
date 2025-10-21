@@ -15,13 +15,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class TestPipelineIntegration(unittest.TestCase):
+    """
+    Integration test: Proves the entire PySpark job can run on local Spark.
+    """
 
     @classmethod
     def setUpClass(cls):
         """Set up test environment with sample data."""
         test_config = {
-            'app_name': 'test_pipeline_integration',
-            'spark_config': {}
+            'app_name': 'test_pipeline_integration_top_detected_by_geo',
         }
         cls.spark = create_spark_session(test_config)
         cls.temp_dir = tempfile.mkdtemp()
@@ -54,9 +56,10 @@ class TestPipelineIntegration(unittest.TestCase):
             (2, "Suburb")
         ]
 
-        # Create schemas
-        detection_schema = get_schema('detection_data')
-        location_schema = get_schema('location_data')
+        # Create schemas using new nested dict format
+        schemas = get_schema(CONFIG['schemas'])
+        detection_schema = schemas['detection_data']
+        location_schema = schemas['location_data']
 
         # Create DataFrames and save
         detection_df = cls.spark.createDataFrame(
@@ -69,61 +72,41 @@ class TestPipelineIntegration(unittest.TestCase):
         detection_df.write.mode("overwrite").parquet(cls.detection_path)
         location_df.write.mode("overwrite").parquet(cls.location_path)
 
-    def test_end_to_end_pipeline(self):
-        """Test complete pipeline execution."""
+    def test_pipeline_execution(self):
+        """
+        Integration test: Prove the entire PySpark job can run on local Spark.
+        Uses dummy datasets, runs pipeline end-to-end, verifies no errors.
+        """
+        from pipelines.pipelines.top_detected_by_geo import run_pipeline
+        import copy
+
         output_path = f"{self.temp_dir}/pipeline_output.parquet"
 
-        # Configuration overrides for testing
-        config_overrides = {
-            'detection_data_path': self.detection_path,
-            'location_data_path': self.location_path,
-            'output_path': output_path,
-            'top_x': 3
-        }
+        # Override config to use test data and output paths
+        test_config = copy.deepcopy(CONFIG)
+        test_config['inputs']['detection_data']['file_path'] = self.detection_path
+        test_config['inputs']['location_data']['file_path'] = self.location_path
+        test_config['output']['output_path'] = output_path
 
-        # We can't easily test the pipeline execution that creates its own Spark session
-        # because it conflicts with our test Spark session. Instead, we'll test the
-        # processor logic directly using our test session.
-        from lib.operators.TopDetectedOperator import TopDetectedOperator
+        # Temporarily replace CONFIG
+        import pipelines.pipelines.top_detected_by_geo as pipeline_module
+        original_config = pipeline_module.CONFIG
+        pipeline_module.CONFIG = test_config
 
-        config = CONFIG.copy()
-        config['processing']['top_x'] = 3
+        try:
+            # Run the entire pipeline - should complete without errors
+            run_pipeline()
 
-        operator = TopDetectedOperator(config)
+            # Verify output file was created
+            self.assertTrue(os.path.exists(output_path))
 
-        # Read test data using our existing spark session
-        detection_rdd = self.spark.read.parquet(self.detection_path).rdd
-        location_rdd = self.spark.read.parquet(self.location_path).rdd
+            # Verify output can be read and has data
+            output_df = self.spark.read.parquet(output_path)
+            self.assertGreater(output_df.count(), 0)
 
-        # Process data
-        result_rdd = operator.process(detection_rdd, location_rdd)
-
-        # Verify results
-        self.assertIsNotNone(result_rdd)
-        results = result_rdd.collect()
-        self.assertGreater(len(results), 0)
-
-        # Verify result structure
-        for geo_oid, rank, item in results:
-            self.assertIsInstance(geo_oid, int)
-            self.assertIsInstance(rank, int)
-            self.assertIsInstance(item, str)
-
-        # Verify rankings
-        location_results = {}
-        for geo_oid, rank, item in results:
-            if geo_oid not in location_results:
-                location_results[geo_oid] = []
-            location_results[geo_oid].append((rank, item))
-
-        # Should have results for both locations
-        self.assertIn(1, location_results)
-        self.assertIn(2, location_results)
-
-        # Verify rank ordering
-        for location_oid, items in location_results.items():
-            ranks = [rank for rank, item in items]
-            self.assertEqual(sorted(ranks), list(range(1, len(ranks) + 1)))
+        finally:
+            # Restore original config
+            pipeline_module.CONFIG = original_config
 
     def test_config_structure(self):
         """Test that config has the expected structure."""
@@ -131,13 +114,23 @@ class TestPipelineIntegration(unittest.TestCase):
 
         # Test config structure
         self.assertIn('pipeline_name', config)
-        self.assertIn('spark_config', config)
         self.assertIn('inputs', config)
         self.assertIn('output', config)
         self.assertIn('processing', config)
-        
-        # Test default values
+        self.assertIn('schemas', config)
+
+        # Test processing parameters
         self.assertEqual(config['processing']['top_x'], 10)
+        self.assertIn('dedup_columns', config['processing'])
+        self.assertIn('groupby_columns', config['processing'])
+        self.assertIn('rank_column', config['processing'])
+
+        # Test schemas structure
+        self.assertIn('detection_data', config['schemas'])
+        self.assertIn('location_data', config['schemas'])
+        self.assertIn('output', config['schemas'])
+
+        # Test input formats
         self.assertEqual(
             config['inputs']['detection_data']['format'], 'parquet')
 

@@ -5,7 +5,7 @@ Executable pipeline following: read -> process -> write pattern.
 import sys
 import os
 
-# Add project root to path
+# Add project root to path for imports when running pipeline directly
 sys.path.append(os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__)))))
 
@@ -18,58 +18,40 @@ from lib.spark_session import create_spark_session
 def run_pipeline():
     """
     Run the top detected items pipeline.
+    Orchestration tools like Airflow will handle failure monitoring.
     """
-    print(f"Starting pipeline: {CONFIG['pipeline_name']}")
-    print(f"Top X: {CONFIG['processing']['top_x']}")
-
     # Create Spark session
     spark = create_spark_session(CONFIG)
 
-    try:
-        # Step 1: READ DATA
-        print("\n=== READING DATA ===")
-        print(f"Reading detection data from: {CONFIG['inputs']['detection_data']['file_path']}")
-        detection_rdd = read_data(spark, CONFIG['inputs']['detection_data'])
+    # Step 1: READ DATA
+    detection_rdd = read_data(spark, CONFIG['inputs']['detection_data'])
+    location_rdd = read_data(spark, CONFIG['inputs']['location_data'])
 
-        print(f"Reading location data from: {CONFIG['inputs']['location_data']['file_path']}")
-        location_rdd = read_data(spark, CONFIG['inputs']['location_data'])
+    # Step 2: PROCESS DATA
+    operator = TopDetectedOperator(CONFIG)
+    result_rdd = operator.calculate(detection_rdd)
 
-        print(f"Detection data count: {detection_rdd.count():,}")
-        print(f"Location data count: {location_rdd.count():,}")
+    # Step 3: JOIN WITH LOCATION NAMES
+    location_lookup = location_rdd.map(
+        lambda row: (row.geographical_location_oid, row.geographical_location)
+    ).collectAsMap()
 
-        # Step 2: PROCESS DATA
-        print("\n=== PROCESSING DATA ===")
-        operator = TopDetectedOperator(CONFIG)
-        result_rdd = operator.process(detection_rdd, location_rdd)
+    # result_rdd format: (geographical_location_oid, item_rank, item_name)
+    # Transform to: (geographical_location_oid, geographical_location, item_rank, item_name)
+    result_with_location = result_rdd.map(
+        lambda row: (
+            row[0],  # geographical_location_oid
+            location_lookup.get(row[0], 'Unknown'),  # geographical_location_name
+            row[1],  # item_rank
+            row[2]   # item_name
+        )
+    )
 
-        result_count = result_rdd.count()
-        print(f"Processed results count: {result_count:,}")
+    # Step 4: WRITE DATA
+    output_schema = get_schema(CONFIG['schemas'])['output']
+    write_data(spark, CONFIG['output'], result_with_location, output_schema)
 
-        # Step 3: WRITE DATA
-        print("\n=== WRITING DATA ===")
-        output_schema = get_schema(CONFIG['output']['schema'])
-        write_data(result_rdd, output_schema, spark, CONFIG['output'])
-
-        print(f"Results written to: {CONFIG['output']['output_path']}")
-        print(f"Format: {CONFIG['output']['format']}")
-
-        # Show sample results
-        print("\n=== SAMPLE RESULTS ===")
-        sample_results = result_rdd.take(10)
-        print("Location | Rank | Item")
-        print("-" * 25)
-        for geo_oid, rank, item in sample_results:
-            print(f"{geo_oid:8} | {rank:4} | {item}")
-
-        print(f"\n✅ Pipeline {CONFIG['pipeline_name']} completed successfully!")
-
-        return result_rdd
-
-    except Exception as e:
-        print(f"❌ Pipeline failed: {str(e)}")
-        raise
-    finally:
-        spark.stop()
+    spark.stop()
 
 
 if __name__ == "__main__":

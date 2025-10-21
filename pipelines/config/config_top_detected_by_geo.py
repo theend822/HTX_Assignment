@@ -4,14 +4,7 @@ Configuration for top detected items by geographical location pipeline.
 
 CONFIG = {
     'pipeline_name': 'top_detected_by_geo',
-    'app_name': 'HTX_TopDetected_Calculator',
-
-    # Spark configuration
-    'spark_config': {
-        'spark.sql.adaptive.enabled': 'true',
-        'spark.sql.adaptive.coalescePartitions.enabled': 'true',
-        'spark.sql.adaptive.skewJoin.enabled': 'true'
-    },
+    'app_name': 'HTX_TopDetected',
 
     # Input configuration
     'inputs': {
@@ -29,15 +22,35 @@ CONFIG = {
     'output': {
         'output_path': 'output/top_detected_results.parquet',
         'format': 'parquet',
-        'mode': 'overwrite',
-        'schema': 'top_detected_output'
+        'mode': 'overwrite'
     },
 
     # Processing parameters
     'processing': {
         'top_x': 10,
-        'dedup_column': 'detection_oid',
-        'grouping_column': 'geographical_location_oid',
-        'item_column': 'item_name'
+        'dedup_columns': ['detection_oid'],
+        'groupby_columns': ['geographical_location_oid'],
+        'rank_column': 'item_name',
+        'count_column': 'detection_oid'
+    },
+
+    # Schema definitions
+    'schemas': {
+        'detection_data': {
+            'geographical_location_oid': 'LongType',
+            'video_camera_oid': 'LongType',
+            'detection_oid': 'LongType',
+            'item_name': 'StringType',
+            'timestamp_detected': 'LongType'
+        },
+        'location_data': {
+            'geographical_location_oid': 'LongType',
+            'geographical_location': 'StringType'
+        },
+        'output': {
+            'geographical_location_oid': 'LongType',
+            'item_rank': 'IntegerType',
+            'item_name': 'StringType'
+        }
     }
 }
