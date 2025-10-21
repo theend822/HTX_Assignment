@@ -48,7 +48,6 @@ CONFIG = {
             'geographical_location': 'StringType'
         },
         'output': {
-            'geographical_location_oid': 'LongType',
             'geographical_location': 'StringType',
             'item_rank': 'IntegerType',
             'item_name': 'StringType'

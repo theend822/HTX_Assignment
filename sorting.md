@@ -83,7 +83,6 @@ location_lookup = location_rdd.map(
 # Step 2: Map-side join (equivalent to broadcast hash join)
 result_with_location = result_rdd.map(
     lambda row: (
-        row[0],  # geographical_location_oid
         location_lookup.get(row[0], 'Unknown'),  # Lookup in dictionary
         row[1],  # item_rank
         row[2]   # item_name

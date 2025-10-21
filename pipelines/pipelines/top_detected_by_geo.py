@@ -37,12 +37,10 @@ def run_pipeline():
     ).collectAsMap()
 
     # result_rdd format: (geographical_location_oid, item_rank, item_name)
-    # Transform to: (geographical_location_oid, geographical_location,
-    #                item_rank, item_name)
+    # Transform to: (geographical_location, item_rank, item_name)
     result_with_location = result_rdd.map(
         lambda row: (
-            row[0],  # geographical_location_oid
-            location_lookup.get(row[0], 'Unknown'),  # geo_location_name
+            location_lookup.get(row[0], 'Unknown'),  # geographical_location
             row[1],  # item_rank
             row[2]   # item_name
         )
