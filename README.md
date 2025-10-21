@@ -2,7 +2,7 @@
 
 Assignment goal: Create Spark RDD based transformation code to find top detected items by geo location
 
-## 1. Folder Structure & Design Philosophy
+## Folder Structure & Design Philosophy
 
 ```
 HTX_Assignment/
@@ -23,7 +23,7 @@ HTX_Assignment/
     └── integration_test_top_detected_by_geo.py
 ```
 
-**Design Pattern: READ DATA → PROCESS DATA → WRITE DATA**
+**Design Philosophy: READ DATA → PROCESS DATA → WRITE DATA**
 
 - `lib/io/`: general READ and WRITE operations
 - `lib/operators/`: commonly used PROCESS operations
@@ -35,7 +35,7 @@ HTX_Assignment/
 - Maintainability: Business logic separate from infrastructure
 - Testability: Each layer can be tested independently
 
-## 2. Design Ideas
+## Key Features
 
 ### lib/ - Reusable Components
 
@@ -90,8 +90,8 @@ HTX_Assignment/
 - Uses namedtuple to simulate RDD rows
 
 
-## 7. To-Do
+## To-Do
 - Considering integrating data quality check in the process to meet industry best practices. It should, in general, follow `input data --> dq check --> specific data operation --> temp output data --> dq check --> output data`
 
-## 8. Lessons Learnt
+## Lessons Learnt
 
