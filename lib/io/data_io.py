@@ -1,6 +1,5 @@
 """
 General data I/O functions for reading and writing data in pipelines.
-These functions are reusable across different pipeline tasks.
 """
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
@@ -33,15 +32,15 @@ def read_data(spark: SparkSession, config: Dict[str, Any]):
     return df.rdd
 
 
-def write_data(rdd, schema: StructType, spark: SparkSession, config: Dict[str, Any]):
+def write_data(spark: SparkSession, config: Dict[str, Any], rdd, schema: StructType):
     """
     General function to write data based on configuration.
 
     Args:
-        rdd: RDD to write
-        schema: Schema for the output DataFrame
         spark: SparkSession instance
         config: Configuration dict with write parameters
+        rdd: RDD to write
+        schema: Schema for the output DataFrame
     """
     output_path = config['output_path']
     output_format = config.get('format', 'parquet')
@@ -60,30 +59,46 @@ def write_data(rdd, schema: StructType, spark: SparkSession, config: Dict[str, A
         raise ValueError(f"Unsupported output format: {output_format}")
 
 
-def get_schema(schema_name: str) -> StructType:
-    """Get predefined schemas by name."""
-    from pyspark.sql.types import StructField, LongType, StringType, IntegerType
+def get_schema(config: Dict[str, Dict[str, str]]) -> Dict[str, StructType]:
+    """
+    Create schemas based on configuration.
 
-    schemas = {
-        'top_detected_output': StructType([
-            StructField("geographical_location_oid", LongType(), False),
-            StructField("item_rank", IntegerType(), False),
-            StructField("item_name", StringType(), False)
-        ]),
-        'detection_data': StructType([
-            StructField("geographical_location_oid", LongType(), False),
-            StructField("video_camera_oid", LongType(), False),
-            StructField("detection_oid", LongType(), False),
-            StructField("item_name", StringType(), False),
-            StructField("timestamp_detected", LongType(), False)
-        ]),
-        'location_data': StructType([
-            StructField("geographical_location_oid", LongType(), False),
-            StructField("geographical_location", StringType(), False)
-        ])
+    Args:
+        config: Nested dict where outer key is dataset name,
+                inner key-value pairs are column name and column type
+                Example: {
+                    'dataset_name': {
+                        'column1': 'LongType',
+                        'column2': 'StringType'
+                    }
+                }
+
+    Returns:
+        Dict mapping dataset names to StructType schemas
+    """
+    from pyspark.sql.types import (
+        StructField, LongType, StringType, IntegerType,
+        FloatType, DoubleType, BooleanType, TimestampType
+    )
+
+    # Map string type names to PySpark types
+    type_mapping = {
+        'LongType': LongType(),
+        'StringType': StringType(),
+        'IntegerType': IntegerType(),
+        'FloatType': FloatType(),
+        'DoubleType': DoubleType(),
+        'BooleanType': BooleanType(),
+        'TimestampType': TimestampType()
     }
 
-    if schema_name not in schemas:
-        raise ValueError(f"Unknown schema: {schema_name}")
+    schemas = {}
+    for dataset_name, columns in config.items():
+        fields = []
+        for col_name, col_type in columns.items():
+            if col_type not in type_mapping:
+                raise ValueError(f"Unsupported column type: {col_type}")
+            fields.append(StructField(col_name, type_mapping[col_type], False))
+        schemas[dataset_name] = StructType(fields)
 
-    return schemas[schema_name]
+    return schemas
