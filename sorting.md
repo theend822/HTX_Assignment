@@ -1,7 +1,6 @@
-
 # SPARK SORTING STRATEGIES
 
-1. SORT MERGE JOIN
+### SORT MERGE JOIN
 
 Overview:
 - Default join strategy for large-large table joins
@@ -16,7 +15,7 @@ Characteristics:
 - Slower for small-large joins
 
 
-2. BROADCAST HASH JOIN
+### BROADCAST HASH JOIN
 
 Overview:
 - Small dataset is broadcast to all executors
@@ -31,7 +30,7 @@ Characteristics:
 - Driver memory pressure for large broadcasts
 
 
-3. SHUFFLE HASH JOIN
+### SHUFFLE HASH JOIN
 
 Overview:
 - Data is shuffled by join keys
@@ -45,8 +44,7 @@ Characteristics:
 - Memory intensive for hash table construction
 
 
-4. CARTESIAN JOIN
-
+### CARTESIAN JOIN
 Overview:
 - Cross product of all rows
 - No join condition optimization
@@ -56,6 +54,10 @@ Characteristics:
 - Extremely expensive
 - Only for specific analytical needs
 - Not applicable to our use case
+
+
+
+
 
 
 
