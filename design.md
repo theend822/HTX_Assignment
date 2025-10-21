@@ -18,7 +18,7 @@ To build a **near–real-time data pipeline** on **GCP** that:
 
 **2. Duplicate handling**  
 - Q: How do we define duplications? What to do if we find duplicates while processing the data?
-- Assumption: 
+- Assumption: Each detection_id should only exist once
 
 **3. Data Retention**
 - Q: How long should raw events be retained? (for replay, auditing, compliance)
@@ -147,14 +147,13 @@ Looker Studio Dashboard
 - Purpose: Deduplicated, enriched events with location names joined
 - Features:
   - Partitioned by date (timestamp_detected)
-  - Clustered by geographical_location_oid and item_name
+  - Clustered by geographical_location_oid
   - Contains joined geographical_location name
-  - Filters out duplicates (only unique events)
+  - Duplicate events flagged
   - Retention: 30 days hot, 1 year cold storage
 - Why partitioning/clustering?
-  - Reduces query costs (prunes irrelevant partitions)
-  - Improves query performance for dashboard filters
-  - Enables automatic lifecycle management
+  - Improves query performance
+  - Reduces query costs
 
 **Layer 3: Materialized View (`detection_events_enriched`)**
 - Purpose: Pre-joined, deduplicated view optimized for dashboard queries
@@ -195,7 +194,6 @@ Looker Studio Dashboard
 - Direct BigQuery connection (no ETL required)
 - Auto-refresh capabilities (1-minute intervals)
 - Shareable dashboards with access control
-- Low learning curve for stakeholders
 - Flexible ad-hoc analysis (PM can drill down by location, item, time)
 
 

@@ -95,5 +95,15 @@ HTX_Assignment/
 
 ## Lessons Learnt - Xiaoyi's own reference
 - TestClass
+    - Inherit from unittest class
+    - First define what to do before & after test
+    - Then define customized test via method starting with test_
+    - When executed, it follows `before_test --> customized test --> after_test`
 - Real Time Data Architecture 
+    - Cloud pub/sub
+    - Watermark based dedupe
+- Spark RDD
+    - map
+    - flatMap
+    - collectAsMap + lambda for broadcasting
 
